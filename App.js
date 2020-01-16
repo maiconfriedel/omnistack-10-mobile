@@ -1,6 +1,12 @@
 import React from "react";
-import Main from "./src/Main";
+import { StatusBar } from "react-native";
+import Routes from "./src/routes";
 
 export default function App() {
-  return <Main />;
+  return (
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#7d40e7" />
+      <Routes />
+    </>
+  );
 }
