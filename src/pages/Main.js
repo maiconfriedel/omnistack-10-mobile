@@ -1,13 +1,27 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Image, View, Text } from "react-native";
+import {
+  StyleSheet,
+  Image,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Keyboard
+} from "react-native";
 import MapView, { Marker, Callout } from "react-native-maps";
 import {
   requestPermissionsAsync,
   getCurrentPositionAsync
 } from "expo-location";
+import { MaterialIcons } from "@expo/vector-icons";
 
-export default function Main() {
+import api from "../services/api";
+import socket from "../services/websocket";
+
+export default function Main({ navigation }) {
   const [currentRegion, setCurrentRegion] = useState(null);
+  const [devs, setDevs] = useState([]);
+  const [techs, seTechs] = useState("");
 
   // busca localização atual do usuário
   useEffect(() => {
@@ -33,36 +47,88 @@ export default function Main() {
     loadInitialPosition();
   }, []);
 
+  // busca os devs na api
+  async function loadDevs() {
+    const { latitude, longitude } = currentRegion;
+
+    const response = await api.get("/search", {
+      params: {
+        latitude,
+        longitude,
+        techs
+      }
+    });
+    setDevs(response.data.devs);
+    Keyboard.dismiss();
+  }
+
+  // troca o estado da região quando move o mapa
+  function handleRegionChanged(region) {
+    setCurrentRegion(region);
+  }
+
+  // se não tiver carregado a região não renderiza nada
   if (!currentRegion) {
     return null;
   }
 
   return (
-    <MapView style={styles.map} initialRegion={currentRegion}>
-      <Marker
-        coordinate={{
-          latitude: currentRegion.latitude,
-          longitude: currentRegion.longitude
-        }}
+    <>
+      <MapView
+        onRegionChangeComplete={handleRegionChanged}
+        style={styles.map}
+        initialRegion={currentRegion}
       >
-        <Image
-          style={styles.avatar}
-          source={{
-            uri:
-              "https://avatars0.githubusercontent.com/u/54713276?s=400&u=980cbcf8b1a4f411ea7241c98d7e67dc3d270ddf&v=4"
-          }}
+        {devs &&
+          devs.map(dev => (
+            <Marker
+              coordinate={{
+                latitude: dev.location.coordinates[1],
+                longitude: dev.location.coordinates[0]
+              }}
+              key={dev._id}
+            >
+              <Image
+                style={styles.avatar}
+                source={{
+                  uri: dev.avatar_url
+                }}
+              />
+              <Callout
+                onPress={() => {
+                  navigation.navigate("Profile", {
+                    github_username: dev.github_username
+                  });
+                }}
+              >
+                <View style={styles.callout}>
+                  <Text style={styles.devName}>
+                    {dev.name || dev.github_username}
+                  </Text>
+                  <Text style={styles.devBio}>{dev.bio}</Text>
+                  <Text style={styles.devTechs}>{dev.techs.join(", ")}</Text>
+                </View>
+              </Callout>
+            </Marker>
+          ))}
+      </MapView>
+      <View style={styles.searchForm}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar devs por techs..."
+          placeholderTextColor="#999"
+          autoCapitalize="words"
+          autoCorrect={false}
+          value={techs}
+          onChangeText={seTechs}
         />
-        <Callout>
-          <View style={styles.callout}>
-            <Text style={styles.devName}>Maicon Gabriel Friedel</Text>
-            <Text style={styles.devBio}>
-              Junior System Analyst at Grupo Kyly.
-            </Text>
-            <Text style={styles.devTechs}>C#, .Net, React, React Native</Text>
-          </View>
-        </Callout>
-      </Marker>
-    </MapView>
+        <TouchableOpacity style={styles.loadButton} onPress={loadDevs}>
+          <Text>
+            <MaterialIcons name="my-location" size={20} color="#fff" />
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </>
   );
 }
 
@@ -73,7 +139,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 54,
     height: 54,
-    borderRadius: 4,
+    borderRadius: 27,
     borderWidth: 2,
     borderColor: "#fff"
   },
@@ -90,5 +156,38 @@ const styles = StyleSheet.create({
   },
   devTechs: {
     marginTop: 5
+  },
+  searchForm: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    right: 20,
+    zIndex: 5,
+    flexDirection: "row"
+  },
+  searchInput: {
+    flex: 1,
+    height: 50,
+    backgroundColor: "#fff",
+    color: "#333",
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    fontSize: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowOffset: {
+      width: 4,
+      height: 4
+    },
+    elevation: 2
+  },
+  loadButton: {
+    width: 50,
+    height: 50,
+    backgroundColor: "#8E4DFF",
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 5
   }
 });
