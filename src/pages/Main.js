@@ -22,6 +22,8 @@ export default function Main({ navigation }) {
   const [currentRegion, setCurrentRegion] = useState(null);
   const [devs, setDevs] = useState([]);
   const [techs, seTechs] = useState("");
+  const [keyboardShow, setKeyboardShow] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // busca localização atual do usuário
   useEffect(() => {
@@ -72,6 +74,22 @@ export default function Main({ navigation }) {
     return null;
   }
 
+  Keyboard.addListener("keyboardDidShow", e => {
+    setKeyboardHeight(e.endCoordinates.height + 40);
+    setKeyboardShow(true);
+  });
+
+  Keyboard.addListener("keyboardDidHide", () => {
+    setKeyboardShow(false);
+  });
+
+  const styleFlatten = StyleSheet.flatten([
+    styles.searchForm,
+    {
+      bottom: keyboardShow ? keyboardHeight : 10
+    }
+  ]);
+
   return (
     <>
       <MapView
@@ -112,7 +130,7 @@ export default function Main({ navigation }) {
             </Marker>
           ))}
       </MapView>
-      <View style={styles.searchForm}>
+      <View style={styleFlatten}>
         <TextInput
           style={styles.searchInput}
           placeholder="Buscar devs por techs..."
@@ -159,9 +177,9 @@ const styles = StyleSheet.create({
   },
   searchForm: {
     position: "absolute",
-    top: 10,
+    bottom: 10,
     left: 10,
-    right: 20,
+    right: 10,
     zIndex: 5,
     flexDirection: "row"
   },
